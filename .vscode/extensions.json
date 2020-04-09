@@ -1,0 +1,8 @@
+{
+  "recommendations": [],
+  "unwantedRecommendations": [
+    "esbenp.prettier-vscode",
+    "remimarsal.prettier-now",
+    "prettier.prettier-vscode"
+  ]
+}
