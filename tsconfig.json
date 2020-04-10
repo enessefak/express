@@ -3,7 +3,7 @@
     "module": "commonjs",
     "esModuleInterop": true,
     "target": "es6",
-    "noImplicitAny": true,
+    "noImplicitAny": false,
     "moduleResolution": "node",
     "sourceMap": true,
     "outDir": "dist",
@@ -11,9 +11,7 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "baseUrl": ".",
-    "paths": {
-      "*": ["node_modules/*"]
-    }
+    "typeRoots": ["./src/types", "./node_modules/@types"]
   },
   "include": ["src"]
 }
