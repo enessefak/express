@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "license": "MIT",
   "scripts": {
-    "start": "ts-node ./src/server",
+    "start": "ts-node ./src/server --transpile-only",
     "dev": "nodemon -e ts -w ./src -x yarn run watch",
     "watch": "node --inspect -r ts-node/register ./src/server"
   },
