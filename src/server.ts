@@ -29,18 +29,21 @@ app.get('*', async (req: Request, res: Response) => {
         <head>
           <title>Client</title>
         </head>
-        <body>`)
+        <body><div id="root">`)
 
   const write = (row, enc, next) => {
     try {
       const data = JSON.parse(String(row))
       data.html && res.write(data.html)
-      data.script &&
-        res.write(`<script crossorigin="crossorigin" src="https://unpkg.com/react@16/umd/react.development.js"></script>
+      if (data.script) {
+        res.write(`</div>`)
+        res.write(`
+          <script crossorigin="crossorigin" src="https://unpkg.com/react@16/umd/react.development.js"></script>
       <script crossorigin="crossorigin" src="https://unpkg.com/react-dom@16/umd/react-dom.development.js"></script>
       <script crossorigin="crossorigin" src="https://unpkg.com/react-router/umd/react-router.min.js"></script>
       <script crossorigin="crossorigin" src="https://unpkg.com/react-router-dom/umd/react-router-dom.min.js"></script>
-      ${data.script}`)
+      <script src="http://localhost:81/${data.script}"></script></body></html>`)
+      }
     } catch (error) {
       console.error(error)
     }
@@ -52,7 +55,6 @@ app.get('*', async (req: Request, res: Response) => {
     hyperquest(`http://localhost:81${req.url}`),
     through(write),
     () => {
-      res.write(`</body></html>`)
       res.end()
     }
   ]
