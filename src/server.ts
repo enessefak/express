@@ -1,19 +1,20 @@
-import dotenv from 'dotenv'
+import http from 'http'
 import express, { Application, Request, Response } from 'express'
 import cors from 'cors'
 import compression from 'compression'
 import bodyParser from 'body-parser'
-import hyperquest from 'hyperquest'
-import through from 'through2'
-import pump from 'pump'
+import dotenv from 'dotenv'
+
+import * as views from './views'
 
 dotenv.config()
 
 const PORT = process.env.PORT || 80
 const app: Application = express()
 
-app.set('views', 'views')
-app.set('view engine', 'pug')
+const fragmentUrl = `${process.env.FRAGMENT_PROTOCOL}://${process.env.FRAGMENT_HOST}`
+
+app.disable('x-powered-by')
 
 app.use(bodyParser.json())
 
@@ -21,49 +22,81 @@ app.use(compression())
 
 app.use(cors())
 
+enum FragmentResponseType {
+  State = 'state',
+  Script = 'script',
+  Style = 'style',
+  Content = 'content'
+}
+
+enum FragmentName {
+  Header = 'eft'
+}
+
+interface FragmentResponse {
+  name: string
+  type: FragmentResponseType
+  content: any
+}
+
+const fragments = {
+  [FragmentName.Header]: {
+    port: 81
+  }
+}
+
+const readFragment = (fragmentName: FragmentName, onData, onEnd): void => {
+  const fragment = fragments[fragmentName]
+
+  http.get(`${fragmentUrl}:${fragment.port}`, function (fragmentResponse) {
+    fragmentResponse.on('data', function (chunk) {
+      onData?.(JSON.parse(chunk))
+    })
+
+    fragmentResponse.on('end', function () {
+      onEnd?.()
+    })
+  })
+}
+
+const writeFragment = (res, { type, content }: FragmentResponse): void => {
+  switch (type) {
+    case FragmentResponseType.Content:
+      res.write(content)
+      break
+    case FragmentResponseType.Script:
+      res.write(`<script src="${content}"></script>`)
+      break
+
+    default:
+      break
+  }
+}
+
 app.get('*', async (req: Request, res: Response) => {
   res.setHeader('Content-Type', 'text/html; charset=utf-8')
 
-  res.write(`<!DOCTYPE html>
-      <html>
-        <head>
-          <title>Client</title>
-        </head>
-        <body><div id="root">`)
+  // Html page top and common libraries
+  res.write(views.top)
 
-  const write = (row, enc, next) => {
-    try {
-      const data = JSON.parse(String(row))
-      data.html && res.write(data.html)
-      if (data.script) {
-        res.write(`</div>`)
-        res.write(`
-          <script crossorigin="crossorigin" src="https://unpkg.com/react@16/umd/react.development.js"></script>
-      <script crossorigin="crossorigin" src="https://unpkg.com/react-dom@16/umd/react-dom.development.js"></script>
-      <script crossorigin="crossorigin" src="https://unpkg.com/react-router/umd/react-router.min.js"></script>
-      <script crossorigin="crossorigin" src="https://unpkg.com/react-router-dom/umd/react-router-dom.min.js"></script>
-      <script src="http://localhost:81/${data.script}"></script></body></html>`)
-      }
-    } catch (error) {
-      console.error(error)
-    }
+  const onData = (data: FragmentResponse): void => writeFragment(res, data)
 
-    next()
+  // Html page end and res end
+  const onEnd = () => {
+    res.write(views.bottom)
+    res.end()
   }
 
-  const fragment = [
-    hyperquest(`http://localhost:81${req.url}`),
-    through(write),
-    () => {
-      res.end()
-    }
-  ]
-
-  pump(...fragment)
+  // Content
+  readFragment(FragmentName.Header, onData, onEnd)
 })
 
 app.listen(PORT, () => {
   console.log(`🚀 Server ready at http://localhost:${PORT}`)
+
+  if (process.send) {
+    process.send('online')
+  }
 })
 
 export default app
